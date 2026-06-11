@@ -3,131 +3,136 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_page.dart';
 
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
-// membuat class state untuk login page
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
-//membuat class state
 class _LoginPageState extends State<LoginPage> {
-  //inisialisasi varaiabel user name
-  final TextEditingController _usernameController = TextEditingController();
-  //inisialisasi variabel password
-  final TextEditingController _passwordController = TextEditingController();
-  //inisialisasi variabel validasi form login
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool _obscureText = true;
 
-
-  //method login
-  Future<void> _login() async {
+  Future<void> login() async {
     if (_formKey.currentState!.validate()) {
-    final prefs = await SharedPreferences.getInstance();
-    //untuk menyimpan data login ke shared preferences
-    await prefs.setBool('isLogin', true);
-    //menyimpan data username ke shared preferences
-    await prefs.setString('username', _usernameController.text);
-    //menyimpan data password ke shared preferences
-    await prefs.setString('password', _passwordController.text);
-    //navigasi ke home page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
-    );
-  }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLogin', true);
+      await prefs.setString('username', usernameController.text);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    }
   }
 
   @override
-  Widget build(BuildContext context) {  
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
-      body: Center( 
+      backgroundColor: const Color.fromARGB(255, 245, 245, 245),
+      body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20),
           child: Card(
-            elevation: 8,
+            elevation: 5,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(15),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(25),
               child: Form(
                 key: _formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.person, size: 64, color: Color.fromARGB(255, 171, 198, 19)),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: Icon(Icons.person),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  children: [
+                    const Icon(Icons.person, size: 80, color: Colors.green),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        prefixIcon: const Icon(Icons.person),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                    ),
-                    //membuat validasi untuk form login
-                    validator: (value) {
-                        if (value == null || value.isEmpty) {
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Username tidak boleh kosong';
-                        }
-                        if (value.length < 4) {
-                          return 'Username minimal 4 huruf';
                         }
                         return null;
                       },
-                  ),
-                  SizedBox(height: 24),
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
                     ),
-                    //membuat validasi untuk form password
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password tidak boleh kosong';
-                      }
-                      if (value.length < 6) {
-                        return 'Password minimal 6 karakter';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 6, 211, 13),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: _obscureText,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureText ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureText = !_obscureText;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child:const Text(
-                        'Login',
-                         style: TextStyle(fontSize: 18, color: Colors.white),
-                         ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Password tidak boleh kosong';
+                        }
+                        if (value.length < 6) {
+                          return 'Password minimal 6 karakter';
+                        }
+                        return null;
+                      },
                     ),
-                  )
-                ]
-              )
-            )
-        )
-      )
-      )
-      )
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(255, 96, 76, 175),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'Login',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 255, 255, 255),
+                          ),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
-}
+  }
 }

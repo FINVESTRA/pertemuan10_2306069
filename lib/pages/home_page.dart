@@ -1,30 +1,160 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
-
+import '../models/product_model.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
-//membuat state untuk home page
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-
-//membuat class state untuk home page
 class _HomePageState extends State<HomePage> {
-  //inisialisasi variabel username
+  List<ProductModel> products = [];
   String username = '';
 
-  //membuat init state untuk mengambil data username dari shared preferences
   @override
   void initState() {
     super.initState();
     getUser();
+    loadProducts();
   }
 
-  //membuat method getUser untuk mengambil data username dari shared preferences(lokal storage)
+  Future<void> loadProducts() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> productList = prefs.getStringList('products') ?? [];
+    setState(() {
+      products = productList
+          .map((item) => ProductModel.fromJson(item))
+          .toList();
+    });
+  }
+
+  Future<void> saveProducts() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> productList = products.map((item) => item.toJson()).toList();
+    await prefs.setStringList('products', productList);
+  }
+
+  Future<void> addProduct(ProductModel product) async {
+    setState(() {
+      products.add(product);
+    });
+    await saveProducts();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Produk berhasil ditambahkan"),
+      ),
+    );
+  }
+
+  Future<void> updateProduct(int index, ProductModel product) async {
+    setState(() {
+      products[index] = product;
+    });
+    await saveProducts();
+  }
+
+  Future<void> deleteProduct(int index) async {
+    setState(() {
+      products.removeAt(index);
+    });
+    await saveProducts();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Produk berhasil dihapus"),
+      ),
+    );
+  }
+
+  void showForm({ProductModel? product, int? index}) {
+    final formKey = GlobalKey<FormState>();
+    TextEditingController nameController = TextEditingController(
+      text: product?.name ?? "",
+    );
+    TextEditingController descriptionController = TextEditingController(
+      text: product?.description ?? "",
+    );
+    TextEditingController priceController = TextEditingController(
+      text: product?.price.toString() ?? "",
+    );
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(product == null ? "Tambah" : "Edit Produk"),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: "Nama"),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return "Nama tidak boleh kosong";
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: descriptionController,
+                decoration: const InputDecoration(labelText: "Deskripsi"),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return "Deskripsi tidak boleh kosong";
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: priceController,
+                decoration: const InputDecoration(labelText: "Harga"),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return "Harga tidak boleh kosong";
+                  }
+                  final price = int.tryParse(value);
+                  if (price == null || price <= 0) {
+                    return "Harga harus berupa angka lebih dari 0";
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final newProduct = ProductModel(
+                  name: nameController.text,
+                  description: descriptionController.text,
+                  price: int.parse(priceController.text),
+                );
+                if (product == null) {
+                  addProduct(newProduct);        
+                } else {
+                  updateProduct(index!, newProduct);
+                }
+                Navigator.pop(context);
+              }
+            },
+            child: Text(
+              product == null ? "Simpan" : "Perbaharui"
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> getUser() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -32,107 +162,166 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  //Membuat method Logout
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 
-//membuat widget builder
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: const Color(0xFFF5F6FA),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Container(
-            height: 100,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                  offset: const Offset(0, 3), 
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Container(
+                height: 100,
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundImage: const NetworkImage('https://picsum.photos/200/300'),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Selamat Datang",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 28,
+                      backgroundImage: NetworkImage(
+                        "https://picsum.photos/200/300",
                       ),
-                      const SizedBox(height: 4),
-                      Row(
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            username,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            "Hai, Selamat Datang!",
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.verified,
-                            color: Color.fromARGB(255, 188, 211, 11),
-                            size: 20,
+                          const SizedBox(height: 5),
+                          Row(
+                            children: [
+                              Text(
+                                username,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.verified,
+                                color: Color.fromARGB(255, 59, 255, 121),
+                                size: 20,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Stack(
+                    ),
+                    GestureDetector(
+                      onTap: logout,
+                      child: Stack(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12.0, ),
+                            padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color.fromARGB(255, 228, 231, 233),
-                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  blurRadius: 3,
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
                                 ),
                               ],
                             ),
+                            child: const Icon(
+                              Icons.logout,
+                              size: 28,
+                              color: Colors.red,
+                            ),
                           ),
-                        ]
-                      )
-                    ]
-                  )
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                ElevatedButton(
-                  onPressed: logout,
-                  child: Icon(Icons.logout, color: const Color.fromARGB(255, 49, 15, 200), size: 16),
-                )
-              ]
-            )
-          )
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: products.isEmpty
+                    ? const Center(child: Text("Belum ada produk"))
+                    : ListView.builder(
+                        itemCount: products.length,
+                        itemBuilder: (context, index) {
+                          final product = products[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(15),
+                              title: Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 5),
+                                  Text("Rp ${product.price}"),
+                                  const SizedBox(height: 5),
+                                  Text(product.description),
+                                ],
+                              ),
+                              leading: IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Color.fromARGB(255, 30, 0, 255),
+                                ),
+                                onPressed: () => showForm(
+                                  product: products[index],
+                                  index: index,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Color.fromARGB(255, 54, 82, 244),
+                                ),
+                                onPressed: () => deleteProduct(index),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => showForm(),        
+        child: const Icon(Icons.add, color: Colors.black),
       ),
     );
   }
-
 }
